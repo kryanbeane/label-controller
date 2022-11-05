@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"time"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -20,6 +21,7 @@ type PodReconciler struct {
 const (
 	addPodNameLabelAnnotation = "cloud-demo/add-pod-name-label"
 	podNameLabel              = "cloud-demo/pod-name"
+	requeueTime               = 30 * time.Second
 )
 
 //+kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch;create;update;patch;delete
@@ -29,20 +31,59 @@ const (
 func (r *PodReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
 
-	// Fetch the Pod
+	// Fetch pods
 	var foundPod v1.Pod
 	err := r.Get(ctx, req.NamespacedName, &foundPod)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			// Logging the error and returning nil to requeue the reconciler
+			// Logging the error and re-queueing after the requeue time
 			log.Log.Error(err, "Pod Not Found")
-			return ctrl.Result{}, nil
+			return ctrl.Result{Requeue: true, RequeueAfter: requeueTime}, nil
 		}
 		log.Log.Error(err, "Unexpected Error Getting Pod")
 		return ctrl.Result{}, err
+
+	} else {
+		log.Log.Info("Found pod", "Pod", foundPod)
 	}
 
-	log.Log.Info("Found Pod", "Pod", foundPod)
+	// Match pod actual state with desired state
+	labelIsExpected := foundPod.Annotations[addPodNameLabelAnnotation] == "true"
+	labelIsPresent := foundPod.Labels[podNameLabel] == foundPod.Name
+
+	if labelIsExpected == labelIsPresent {
+		log.Log.Info("Pod label is as expected, no action needed")
+		return ctrl.Result{}, nil
+	}
+
+	// Update pod label based on annotation value
+	if labelIsExpected {
+		// Check for non-nil labels map and create it if nil
+		if foundPod.Labels == nil {
+			foundPod.Labels = make(map[string]string)
+		}
+		// Add label to pod
+		foundPod.Labels[podNameLabel] = foundPod.Name
+		log.Log.Info("Adding label to pod")
+
+	} else {
+		// If label is not expected, check if it exists
+		if foundPod.Labels[podNameLabel] != "" {
+			delete(foundPod.Labels, podNameLabel)
+			log.Log.Info("Removing label from pod")
+		}
+	}
+
+	err = r.Update(ctx, &foundPod)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return ctrl.Result{Requeue: true}, nil
+		}
+
+		if errors.IsConflict(err) {
+			return ctrl.Result{Requeue: true}, nil
+		}
+	}
 
 	return ctrl.Result{}, nil
 }
