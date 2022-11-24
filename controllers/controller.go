@@ -105,14 +105,13 @@ func (c Controller) Reconcile(ctx context.Context, request reconcile.Request) (r
 	nodeNameAnnotationMissing := foundPod.Annotations[addPodLabelAnnotation] == ""
 	if nodeNameLabelExpected && !nodeNameLabelPresent {
 		logrus.Infof("LABEL-CONTROLLER-ACTION: pod node name label is not present when it should be, adding it to pod %s", foundPod.Name)
-		if err := c.syncPodNodeNameLabel(ctx, foundPod, true); err != nil {
-			return ctrl.Result{}, err
-		}
+		res := c.syncPodNameLabel(ctx, foundPod, true)
+		return res, err
 	} else if !nodeNameLabelExpected && nodeNameLabelPresent || (nodeNameAnnotationMissing && nodeNameLabelPresent) {
 		logrus.Infof("LABEL-CONTROLLER-ACTION: pod node name label is present when it shouldn't be, removing it from pod %s", foundPod.Name)
-		if err := c.syncPodNodeNameLabel(ctx, foundPod, false); err != nil {
-			return ctrl.Result{}, err
-		}
+		logrus.Infof("LABEL-CONTROLLER-ACTION: pod name label is present when it shouldn't be, removing it from pod %s", foundPod.Name)
+		res := c.syncPodNameLabel(ctx, foundPod, false)
+		return res, err
 	}
 
 	// Sync Pod IP Label
@@ -121,14 +120,13 @@ func (c Controller) Reconcile(ctx context.Context, request reconcile.Request) (r
 	ipAnnotationMissing := foundPod.Annotations[addPodLabelAnnotation] == ""
 	if ipLabelExpected && !ipLabelPresent {
 		logrus.Infof("LABEL-CONTROLLER-ACTION: pod ip label is not present when it should be, adding it to pod %s", foundPod.Name)
-		if err := c.syncPodIp(ctx, foundPod, true); err != nil {
-			return reconcile.Result{}, err
-		}
+		res := c.syncPodNameLabel(ctx, foundPod, true)
+		return res, err
 	} else if !ipLabelExpected && ipLabelPresent || (ipAnnotationMissing && ipLabelPresent) {
 		logrus.Infof("LABEL-CONTROLLER-ACTION: pod ip label is present when it shouldn't be, removing it from pod %s", foundPod.Name)
-		if err := c.syncPodIp(ctx, foundPod, false); err != nil {
-			return reconcile.Result{}, err
-		}
+		logrus.Infof("LABEL-CONTROLLER-ACTION: pod name label is present when it shouldn't be, removing it from pod %s", foundPod.Name)
+		res := c.syncPodNameLabel(ctx, foundPod, false)
+		return res, err
 	}
 
 	return reconcile.Result{}, nil
@@ -157,7 +155,7 @@ func (c Controller) syncPodNameLabel(ctx context.Context, pod v1.Pod, add bool) 
 	return reconcile.Result{}
 }
 
-func (c Controller) syncPodNodeNameLabel(ctx context.Context, pod v1.Pod, add bool) error {
+func (c Controller) syncPodNodeNameLabel(ctx context.Context, pod v1.Pod, add bool) reconcile.Result {
 	// If labels is nil then init it
 	if pod.Labels == nil {
 		pod.Labels = make(map[string]string)
@@ -174,13 +172,13 @@ func (c Controller) syncPodNodeNameLabel(ctx context.Context, pod v1.Pod, add bo
 	}
 
 	if err := c.patchPod(ctx, pod); err != nil {
-		return err
+		return reconcile.Result{Requeue: true}
 	}
 
-	return nil
+	return reconcile.Result{}
 }
 
-func (c Controller) syncPodIp(ctx context.Context, pod v1.Pod, add bool) error {
+func (c Controller) syncPodIp(ctx context.Context, pod v1.Pod, add bool) reconcile.Result {
 	// If labels is nil then init it
 	if pod.Labels == nil {
 		pod.Labels = make(map[string]string)
@@ -198,10 +196,10 @@ func (c Controller) syncPodIp(ctx context.Context, pod v1.Pod, add bool) error {
 	}
 
 	if err := c.patchPod(ctx, pod); err != nil {
-		return err
+		return reconcile.Result{Requeue: true}
 	}
 
-	return nil
+	return reconcile.Result{}
 }
 
 func (c Controller) patchPod(ctx context.Context, pod v1.Pod) error {
