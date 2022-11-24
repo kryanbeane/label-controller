@@ -253,3 +253,11 @@ catalog-build: opm ## Build a catalog image.
 .PHONY: catalog-push
 catalog-push: ## Push a catalog image.
 	$(MAKE) docker-push IMG=$(CATALOG_IMG)
+
+.PHONY: annotate-pod
+annotate-pod:
+	kubectl annotate pod ${NAME} label-controller/add-label=${TYPE} --overwrite
+
+.PHONY: reset-pod
+reset-annotations:
+	kubectl annotate pod ${NAME} label-controller/add-label-
