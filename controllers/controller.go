@@ -106,13 +106,13 @@ func (c Controller) Reconcile(ctx context.Context, request reconcile.Request) (r
 	if nodeNameLabelExpected && !nodeNameLabelPresent {
 		logrus.Infof("LABEL-CONTROLLER-ACTION: "+
 			"pod node name label is not present when it should be, adding it to pod %s", foundPod.Name)
-		res := c.syncPodNameLabel(ctx, foundPod, true)
+		res := c.syncPodNodeNameLabel(ctx, foundPod, true)
 		return res, err
 	} else if !nodeNameLabelExpected && nodeNameLabelPresent || (nodeNameAnnotationMissing && nodeNameLabelPresent) {
 		logrus.Infof("LABEL-CONTROLLER-ACTION: "+
 			"pod node name label is present when it shouldn't be, "+
 			"removing it from pod %s", foundPod.Name)
-		res := c.syncPodNameLabel(ctx, foundPod, false)
+		res := c.syncPodNodeNameLabel(ctx, foundPod, false)
 		return res, err
 	}
 
@@ -125,13 +125,13 @@ func (c Controller) Reconcile(ctx context.Context, request reconcile.Request) (r
 		logrus.Infof("LABEL-CONTROLLER-ACTION: "+
 			"pod ip label is not present when it should be, "+
 			"adding it to pod %s", foundPod.Name)
-		res := c.syncPodNameLabel(ctx, foundPod, true)
+		res := c.syncPodIp(ctx, foundPod, true)
 		return res, err
 	} else if !ipLabelExpected && ipLabelPresent || (ipAnnotationMissing && ipLabelPresent) {
 		logrus.Infof("LABEL-CONTROLLER-ACTION: "+
 			"pod ip label is present when it shouldn't be, "+
 			"removing it from pod %s", foundPod.Name)
-		res := c.syncPodNameLabel(ctx, foundPod, false)
+		res := c.syncPodIp(ctx, foundPod, false)
 		return res, err
 	}
 
