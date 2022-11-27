@@ -17,12 +17,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// PodReconciler reconciles a Pod object
-type PodReconciler struct {
-	client.Client
-	Scheme *runtime.Scheme
-}
-
 const (
 	// Annotations
 	addPodLabelAnnotation = "label-controller/add-label"
@@ -103,6 +97,7 @@ func (c Controller) Reconcile(ctx context.Context, request reconcile.Request) (r
 	nodeNameLabelExpected := foundPod.Annotations[addPodLabelAnnotation] == "node-name"
 	nodeNameLabelPresent := foundPod.Labels[podNodeNameLabel] == foundPod.Spec.NodeName
 	nodeNameAnnotationMissing := foundPod.Annotations[addPodLabelAnnotation] == ""
+
 	if nodeNameLabelExpected && !nodeNameLabelPresent {
 		logrus.Infof("LABEL-CONTROLLER-ACTION: pod node name label is not present when it should be, adding it to pod %s", foundPod.Name)
 		res := c.syncPodNameLabel(ctx, foundPod, true)
